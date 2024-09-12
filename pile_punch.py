@@ -164,6 +164,7 @@ kM = deltaM*(Mx/Mbxult + My/Mbyult)
 kM = min(kM, kF*0.5)
 kM = round(kM,3)
 k = kM + kF
+k = round(k, 3)
 st.write('Коэффициент использования по продольной силе $k_F=' + str(kF) + '$.')
 st.write('Коэффициент использования по моментам $k_М=' + str(kM) + '$.')
 st.write('Суммарный коэффициент использования $k=' + str(k) + '$.')
