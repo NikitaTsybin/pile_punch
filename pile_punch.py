@@ -8,23 +8,11 @@ import plotly.graph_objects as go
 ##pile_punch_dir = (os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 ##+ '/pages/pile_punch/')
 ##sys.path.append(pile_punch_dir)
-st.header('Расчет на продавливание колонной фундаментной плиты, опирающейся на сваи')
+st.header('Расчет на продавливание фундаментной плиты, опирающейся на сваи')
 
 
-
-if 'b' not in ss: ss['b'] = 50.0
-if 'h' not in ss: ss['h'] = 100.0
-if 'h0' not in ss: ss['h0'] = 125.0
-if 'cL' not in ss: ss['cL'] = 60.0
-if 'cR' not in ss: ss['cR'] = 60.0
-if 'cB' not in ss: ss['cB'] = 70.0
-if 'cT' not in ss: ss['cT'] = 70.0
-if 'is_cL' not in ss: ss['is_cL'] = True
-if 'is_cR' not in ss: ss['is_cR'] = True
-if 'is_cB' not in ss: ss['is_cB'] = True
-if 'is_cT' not in ss: ss['is_cT'] = True
-if 'center' not in ss: ss['center'] = [25.0, 50.0]
-if 'centerM' not in ss: ss['centerM'] = [25.0, 50.0]
+center = [25.0, 50.0]
+centerM = [25.0, 50.0]
 
 
 def generate_piles (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT):
@@ -135,20 +123,25 @@ def find_contour_geometry (V, M, Rbt, h0, F, Mx, My, deltaM, xcol, ycol):
     Myexc = -F*ey/100
     MxexcM = -F*exM/100
     MyexcM = -F*eyM/100
-    Mxloc = abs(Mx + Mxexc)
-    Myloc = abs(My + Myexc)
-    MxlocM = abs(Mx + MxexcM)
-    MylocM = abs(My + MyexcM)
-    kM = (Mxloc/Mbxult + Myloc/Mbyult)*deltaM
-    kMM = (MxlocM/Mbxult + MylocM/Mbyult)*deltaM
+    Mxloc = Mx + Mxexc
+    Myloc = My + Myexc
+    MxlocM = Mx + MxexcM
+    MylocM = My + MyexcM
+    Mxlocmax = max(abs(Mxloc), abs(MxlocM))
+    Mylocmax = max(abs(Myloc), abs(MylocM))
+    kM = (abs(Mxloc)/Mbxult + abs(Myloc)/Mbyult)*deltaM
+    kMM = (abs(MxlocM)/Mbxult + abs(MylocM)/Mbyult)*deltaM
     kM = min(kM, kF/2)
     kMM = min(kMM, kF/2)
     kMmax = max(kM, kMM) 
     k = kF + max(kM, kMM) 
     return {'Lsum': Lsum, 'xc': xc, 'yc': yc, 'xcM': xcM, 'ycM': ycM, 
                                      'ex': ex, 'ey': ey, 'exM': exM, 'eyM': eyM,
+                                     'Ibx': Ix, 'Iby': Iy, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax,
+                                     'Wxmin': Wxmin, 'Wymin': Wymin,
                                      'Mxexc': Mxexc, 'Myexc': Myexc, 'MxexcM': MxexcM, 'MyexcM': MyexcM,
                                      'Mxloc': Mxloc, 'Myloc': Myloc, 'MxlocM': MxlocM, 'MylocM': MylocM, 
+                                     'Mxlocmax': Mxlocmax, 'Mylocmax': Mylocmax,
                                      'Fbult': Fbult, 'Mbxult': Mbxult, 'Mbyult': Mbyult,
                                      'kF': kF, 'kM': kM, 'kMM': kMM, 'kMmax': kMmax , 'k': k}
 
@@ -182,6 +175,7 @@ def generate_blue_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT
     contour_colour = []
     contour_sides = []
     contour_len = []
+    contour_center = []
     if is_cL:
         contour_x = [-cL0/2, -cL0/2]
         contour_y = [-cB0/2, h+cT0/2]
@@ -192,6 +186,9 @@ def generate_blue_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT
         contour_sides.append('левый')
         L = ((contour_x[1]-contour_x[0])**2 + (contour_y[1]-contour_y[0])**2)**0.5
         contour_len.append(L)
+        contour_xc = contour_x[0]
+        contour_yc = contour_y[0] + 0.5*L
+        contour_center.append([contour_xc, contour_yc])
     if is_cR:
         contour_x = [b+cR0/2, b+cR0/2]
         contour_y = [-cB0/2, h+cT0/2]
@@ -202,6 +199,9 @@ def generate_blue_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT
         contour_sides.append('правый')
         L = ((contour_x[1]-contour_x[0])**2 + (contour_y[1]-contour_y[0])**2)**0.5
         contour_len.append(L)
+        contour_xc = contour_x[0]
+        contour_yc = contour_y[0] + 0.5*L
+        contour_center.append([contour_xc, contour_yc])
     if is_cB:
         contour_x = [-cL0/2, b+cR0/2]
         contour_y = [-cB0/2, -cB0/2]
@@ -212,6 +212,9 @@ def generate_blue_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT
         contour_sides.append('нижний')
         L = ((contour_x[1]-contour_x[0])**2 + (contour_y[1]-contour_y[0])**2)**0.5
         contour_len.append(L)
+        contour_yc = contour_y[0]
+        contour_xc = contour_x[0] + 0.5*L
+        contour_center.append([contour_xc, contour_yc])
     if is_cT:
         contour_x = [-cL0/2, b+cR0/2]
         contour_y = [h+cT0/2, h+cT0/2]
@@ -222,7 +225,10 @@ def generate_blue_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT
         contour_sides.append('верхний')
         L = ((contour_x[1]-contour_x[0])**2 + (contour_y[1]-contour_y[0])**2)**0.5
         contour_len.append(L)
-    return contour, contour_gamma, contour_sides, contour_len
+        contour_yc = contour_y[0]
+        contour_xc = contour_x[0] + 0.5*L
+        contour_center.append([contour_xc, contour_yc])
+    return contour, contour_gamma, contour_sides, contour_len, contour_center
 
 def generate_red_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT):
     pile_size = 30
@@ -245,8 +251,6 @@ def generate_red_contours (b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT)
         contour.append([contour_x, contour_y])
     return contour
     
-
-
 def draw_scheme(b, h, h0,
                 cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT,
                 piles, piles_color,
@@ -382,39 +386,6 @@ def draw_scheme(b, h, h0,
     return fig
 
 
-cols_size = [1 for i in range(8)]
-cols = st.columns(cols_size)
-Rbt = cols[0].number_input(label='$R_{bt}$, МПа', step=0.05, format="%.2f", value=1.4, min_value=0.1, max_value=5.0, label_visibility="visible")
-Rbt = 0.01019716213*Rbt
-h0 = cols[1].number_input(label='$h_0$, см', key='h0', step=5.0, format="%.1f", value=125.0, min_value=1.0, max_value=500.0, label_visibility="visible")
-b = cols[2].number_input(label='$b$, см', key='b', step=5.0, format="%.2f", value=50.0, min_value=1.0, max_value=500.0, label_visibility="visible")
-h = cols[3].number_input(label='$h$, см', key='h', step=5.0, format="%.2f", value=100.0, min_value=1.0, max_value=500.0, label_visibility="visible")
-F = cols[4].number_input(label='$F$, тс', step=0.5, format="%.1f", value=1400.0, min_value=1.0, max_value=50000.0, label_visibility="visible")
-Mx = cols[5].number_input(label='$M_x$, тсм', step=0.5, format="%.1f", value=90.0, label_visibility="visible")
-My = cols[6].number_input(label='$M_y$, тсм', step=0.5, format="%.1f", value=120.0, label_visibility="visible")
-deltaM = cols[7].number_input(label='$\delta_M$', step=0.1, format="%.2f", value=0.5, min_value=0.0, max_value=2.0, label_visibility="visible")
-
-black_contours = generate_black_contours(ss['b'], ss['h'], ss['h0'], ss['cL'], ss['is_cL'], ss['cR'], ss['is_cR'], ss['cB'], ss['is_cB'], ss['cT'], ss['is_cT'])
-red_contours = generate_red_contours(ss['b'], ss['h'], ss['h0'], ss['cL'], ss['is_cL'], ss['cR'], ss['is_cR'], ss['cB'], ss['is_cB'], ss['cT'], ss['is_cT'])
-blue_contours, contour_gamma, contour_sides, contour_len = generate_blue_contours(ss['b'], ss['h'], ss['h0'], ss['cL'], ss['is_cL'], ss['cR'], ss['is_cR'], ss['cB'], ss['is_cB'], ss['cT'], ss['is_cT'])
-piles, piles_color = generate_piles(ss['b'], ss['h'], ss['h0'], ss['cL'], ss['is_cL'], ss['cR'], ss['is_cR'], ss['cB'], ss['is_cB'], ss['cT'], ss['is_cT'])
-num_elem = len(blue_contours)
-rez = 0
-if num_elem>=2:
-    rez = find_contour_geometry(blue_contours, contour_gamma, Rbt, h0, F, Mx, My, deltaM, b/2, h/2)
-    ss['center'] = [rez['xc'], rez['yc']]
-    ss['centerM'] = [rez['xcM'], rez['ycM']]
-    #st.write(rez)
-
-
-
-fig = draw_scheme(ss['b'], ss['h'], ss['h0'],
-                  ss['cL'], ss['is_cL'], ss['cR'], ss['is_cR'], ss['cB'], ss['is_cB'], ss['cT'], ss['is_cT'],
-                  piles, piles_color, black_contours, red_contours, blue_contours, contour_gamma, ss['center'], ss['centerM'])
-
-
-
-
 
 with st.expander('Описание исходных данных'):
     st.write(''' $b$ и $h$ - ширина и высота поперечного сечения сечения колонны, см; ''')
@@ -427,26 +398,69 @@ with st.expander('Описание исходных данных'):
     st.write(''' $M_y$ - сосредоточенные момент в ПЛОСКОСТИ оси $y$ (относительно оси $x$), тсм; ''')
     st.write(''' $\delta_M$ - понижающий коэффициент к сосредоточенным моментам. ''')
 
+cols = st.columns([1, 0.4])
+cols2 = cols[0].columns([1,1,1,1,1])
+Rbt = cols2[0].number_input(label='$R_{bt}$, МПа', step=0.05, format="%.2f", value=1.4, min_value=0.1, max_value=5.0, label_visibility="visible")
+#Rbt = 0.01019716213*Rbt
+Rbt = 0.01*Rbt
+F = cols2[1].number_input(label='$F$, тс', step=0.5, format="%.1f", value=1400.0, min_value=1.0, max_value=50000.0, label_visibility="visible")
+Mx = cols2[2].number_input(label='$M_x$, тсм', step=0.5, format="%.1f", value=90.0, label_visibility="visible")
+My = cols2[3].number_input(label='$M_y$, тсм', step=0.5, format="%.1f", value=120.0, label_visibility="visible")
+deltaM = cols2[4].number_input(label='$\delta_M$', step=0.1, format="%.2f", value=0.5, min_value=0.0, max_value=2.0, label_visibility="visible")
+
+cols2_size = [1, 1, 1]
+cols2 = cols[1].columns(cols2_size)
+for i in range(5):
+    cols2[0].write('')
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$b$, см')
+b = cols2[1].number_input(label='$b$, см', step=5.0, format="%.1f", value=50.0, min_value=1.0, max_value=500.0, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$h$, см')
+h = cols2[1].number_input(label='$h$, см', step=5.0, format="%.1f", value=100.0, min_value=1.0, max_value=500.0, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$h_0$, см')
+h0 = cols2[1].number_input(label='$h_0$, см', step=5.0, format="%.1f", value=125.0, min_value=1.0, max_value=500.0, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$c_L$, см')
+cL = cols2[1].number_input(label='$c_L$, см', step=5.0, format="%.1f", value=60.0, min_value=0.0, max_value=500.0, label_visibility="collapsed")
+is_cL = cols2[2].toggle('Контур_слева', value=True, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$c_R$, см')
+cR = cols2[1].number_input(label='$c_R$, см', step=5.0, format="%.1f", value=60.0, min_value=0.0, max_value=500.0, label_visibility="collapsed")
+is_cR = cols2[2].toggle('Контур_справа', value=True, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$c_B$, см')
+cB = cols2[1].number_input(label='$c_B$, см', step=5.0, format="%.1f", value=70.0, min_value=0.0, max_value=500.0, label_visibility="collapsed")
+is_cB = cols2[2].toggle('Контур_снизу', value=True, label_visibility="collapsed")
+
+cols2 = cols[1].columns(cols2_size)
+cols2[0].write('$c_T$, см')
+cT = cols2[1].number_input(label='$c_T$, см', step=5.0, format="%.1f", value=70.0, min_value=0.0, max_value=500.0, label_visibility="collapsed")
+is_cT = cols2[2].toggle('Контур_сверху', value=True, label_visibility="collapsed")
 
 
-cols = st.columns([0.2, 1, 0.25], vertical_alignment="center")
-cols2 = cols[1].columns([1, 1, 1], vertical_alignment="center")
-##cols2[0].write('$c_T$, см')
-cols2[1].number_input(label='$c_T$, см', key='cT', step=5.0, format="%.1f", min_value=0.0, max_value=500.0)
-cols2[2].toggle('Контур_сверху', key='is_cT', label_visibility="collapsed")
 
-cols = st.columns([0.2, 1, 0.2], vertical_alignment="center")
-cols[1].plotly_chart(fig, use_container_width=True)
-cols[0].write('$c_L$, см')
-cols[0].number_input(label='$cR1$, см', key='cL', step=5.0, format="%.1f", min_value=0.0, max_value=500.0, label_visibility="collapsed")
-cols[0].toggle('Контур_слева', key='is_cL', label_visibility="collapsed")
-cols[2].write('$c_R$, см')
-cols[2].number_input(label='$b1$, см', key='cR', step=5.0, format="%.1f", min_value=0.0, max_value=500.0, label_visibility="collapsed")
-cols[2].toggle('Контур_справа', key='is_cR', label_visibility="collapsed")
-cols2 = cols[1].columns([1, 1, 1], vertical_alignment="center")
-##cols2[0].write('$c_B$, см')
-cols2[1].number_input(label='$c_B$, см', key='cB', step=5.0, format="%.1f", min_value=0.0, max_value=500.0)
-cols2[2].toggle('Контур_снизу', key='is_cB', label_visibility="collapsed")
+black_contours = generate_black_contours(b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT)
+red_contours = generate_red_contours(b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT)
+blue_contours, contour_gamma, contour_sides, contour_len, contour_center = generate_blue_contours(b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT)
+piles, piles_color = generate_piles(b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT)
+num_elem = len(blue_contours)
+rez = 0
+if num_elem>=2:
+    rez = find_contour_geometry(blue_contours, contour_gamma, Rbt, h0, F, Mx, My, deltaM, b/2, h/2)
+    center = [rez['xc'], rez['yc']]
+    centerM = [rez['xcM'], rez['ycM']]
+    #st.write(rez)
+
+fig = draw_scheme(b, h, h0, cL, is_cL, cR, is_cR, cB, is_cB, cT, is_cT,
+                  piles, piles_color, black_contours, red_contours, blue_contours, contour_gamma, center, centerM)
+cols[0].plotly_chart(fig, use_container_width=True)
 
 if num_elem<2:
     st.write('В расчете должно быть минимум два участка!')
@@ -456,149 +470,303 @@ if num_elem<2:
 
 with st.expander('Расчетные выкладки'):
 
-    st.write(':red[ТЕКСТОВОЕ ОПИСАНИЕ НЕАКТУАЛЬНО, КОРРЕКТИРУЕТСЯ. КОЭФФИЦИЕНТЫ ИСПОЛЬЗОВАНИЯ АКТУАЛЬНЫ]')
     st.write(f'Проверка (корректировка) значений $c_i$ из условия $0.4 \cdot h_0 = {float(0.4*h0):g} \le c_i \le h_0 = {float(h0):g}$.')
-    cL, cR, cB, cT = 0, 0, 0, 0
-    if ss['is_cL']:
-        cL = round(max(min(ss['cL'],h0),0.4*h0),1)
-    else: cL = round(ss['cL'],1)
+    
+    if is_cL: cL = round(max(min(cL,h0),0.4*h0),1)
+    else: cL = round(cL,1)
 
-    if ss['is_cR']:
-        cR = round(max(min(ss['cR'],h0),0.4*h0),1)
-    else: cR = round(ss['cR'],1)
+    if is_cR: cR = round(max(min(cR,h0),0.4*h0),1)
+    else: cR = round(cR,1)
 
-    if ss['is_cB']:
-        cB = round(max(min(ss['cB'],h0),0.4*h0),1)
-    else: cB = round(ss['cB'],1)
+    if is_cB: cB = round(max(min(cB,h0),0.4*h0),1)
+    else: cB = round(cB,1)
 
-    if ss['is_cT']:
-        cT = round(max(min(ss['cT'],h0),0.4*h0),1)
-    else: cT = round(ss['cT'],1)
-
-    st.write(cL, cR, cB, cT)
+    if is_cT: cT = round(max(min(cT,h0),0.4*h0),1)
+    else: cT = round(cT,1)
 
     string = f'В расчете принимаем: '
 
-    if ss['is_cL']: string += '$c_L = ' + str({cL}) + '$см; '
-    if ss['is_cR']: string += '$c_R = ' + str({cR}) + '$см; '
-    if ss['is_cB']: string += '$c_B = ' + str({cB}) + '$см; '
-    if ss['is_cT']: string += '$c_T = ' + str({cT}) + '$см; '
+    if is_cL: string += '$c_L = ' + str({cL}) + 'см$; '
+    if is_cR: string += '$c_R = ' + str({cR}) + 'см$; '
+    if is_cB: string += '$c_B = ' + str({cB}) + 'см$; '
+    if is_cT: string += '$c_T = ' + str({cT}) + 'см$; '
+    string = string[:-2]
+    string += '.'
     st.write(string)
 
     st.write('Вычисляем повышающие коэффициенты к прочности бетона $1.0 \le \\gamma_i = h_0/c_i \le 2.5$.')
     gammaL, gammaR, gammaB, gammaT = 1, 1, 1, 1
-    if ss['is_cL']: gammaL = round(max(min(h0/cL,2.5),0.4),2)
-    if ss['is_cR']: gammaR = round(max(min(h0/cR,2.5),0.4),2)
-    if ss['is_cB']: gammaB = round(max(min(h0/cB,2.5),0.4),2)
-    if ss['is_cT']: gammaT = round(max(min(h0/cT,2.5),0.4),2)
+    if is_cL: gammaL = round(max(min(h0/cL,2.5),0.4),2)
+    if is_cR: gammaR = round(max(min(h0/cR,2.5),0.4),2)
+    if is_cB: gammaB = round(max(min(h0/cB,2.5),0.4),2)
+    if is_cT: gammaT = round(max(min(h0/cT,2.5),0.4),2)
 
     string = f'В расчете принимаем: '
-    if ss['is_cL']: string += '$\\gamma_L = ' + str({gammaL}) + '$; '
-    if ss['is_cR']: string += '$\\gamma_R = ' + str({gammaR}) + '$; '
-    if ss['is_cB']: string += '$\\gamma_B = ' + str({gammaB}) + '$; '
-    if ss['is_cT']: string += '$\\gamma_T = ' + str({gammaT}) + '$; '
+    if is_cL: string += '$\\gamma_L = ' + str({gammaL}) + '$; '
+    if is_cR: string += '$\\gamma_R = ' + str({gammaR}) + '$; '
+    if is_cB: string += '$\\gamma_B = ' + str({gammaB}) + '$; '
+    if is_cT: string += '$\\gamma_T = ' + str({gammaT}) + '$; '
+    string = string[:-2]
+    string += '.'
     st.write(string)
 
-    LL = 0
-    LR = 0
-    LT = 0
-    LB = 0
-    string = 'Длины участков контура составляют: '
-    if ss['is_cL']:
-        LL = LL + h
-        if ss['is_cB']: LL = LL + cB/2
-        if ss['is_cT']: LL = LL + cT/2
-        string += f'левый, $L_L= {LL}$ см; '
-
-    if ss['is_cR']:
-        LR = LR + h
-        if ss['is_cB']: LR = LR + cB/2
-        if ss['is_cT']: LR = LR + cT/2
-        string += f'правый, $L_R= {LR}$ см; '
-
-    if ss['is_cB']:
-        LB = LB + b
-        if ss['is_cL']: LB = LB + cL/2
-        if ss['is_cR']: LB = LB + cL/2
-        string += f'нижний, $L_B= {LB}$ см; '
+    LL, LR, LT, LB = 0, 0, 0, 0
+    string = 'Длины участков контура: '
+    for i in range(len(contour_sides)):
+        if contour_sides[i] == 'левый':
+            LL = contour_len[i]
+            #string += f'левый, '
+            string += f'$L_L= {float(LL):g}см$; '
+        if contour_sides[i] == 'правый':
+            LR = contour_len[i]
+            #string += f'правый, '
+            string += f'$L_R= {float(LR):g}см$; '
+        if contour_sides[i] == 'нижний':
+            LB = contour_len[i]
+            #string += f'нижний, '
+            string += f'$L_B= {float(LB):g}см$; '
+        if contour_sides[i] == 'верхний':
+            LT = contour_len[i]
+            #string += f'верхний, 
+            string += f'$L_B= {float(LT):g}см$; '
     
-        
+    string = string[:-2]
+    string += '.'
     st.write(string)
-    st.write(LL)
     
 
     st.write('Предельную продавливаюшую силу, воспринимаемую бетоном, вычисляем по формуле:')
 
-    st.write('''$
-    F_{b,ult} = R_{bt} \cdot h_0 \cdot \\left[
-    (\\gamma_L + \\gamma_R) (h + c_B/2 + c_T/2 ) +
-    (\\gamma_B + \gamma_T) (b + c_R/2 + c_L/2 )
-    \\right].
-    $''')
+    st.latex('''
+    F_{b,ult} = R_{bt} \\cdot h_0 \\cdot \\sum_i \\left( \\gamma_i \\cdot L_i  \\right) .
+    ''')
 
-    Fbult = Rbt*h0*( gammaL*(h+cB/2+cT/2) + gammaR*(h+cB/2+cT/2) + gammaB*(b+cL/2+cR/2) + gammaT*(b+cL/2+cR/2) )
-    Fbult = round(Fbult)
+    st.write('В результате подстановки значений найдем $F_{b,ult}='+ str(round(rez['Fbult'])) + '$тс; $F_{b,ult}/1.5=' + str(round(rez['Fbult']/1.5)) + '$тс.' )
 
-    st.write('В результате подстановки значений найдем $F_{b,ult}='+ str(Fbult) + '$тс. $F_{b,ult}/1.5=' + str(round(Fbult/1.5)) + '$тс.' )
+    st.write('Положение центров тяжести каждого из участков контура относительно левого нижнего угла колонны:')
+    x0cL, x0cR, x0cB, x0cT = 0, 0, 0, 0
+    y0cL, y0cR, y0cB, y0cT = 0, 0, 0, 0
+    string = ''
+    for i in range(len(contour_sides)):
+        if contour_sides[i] == 'левый':
+            x0cL, y0cL = contour_center[i]
+            string += 'левый: $x_{0,c,L}=' + f'{float(x0cL):g}' + 'см; \\quad y_{0,c,L}=' + f'{float(y0cL):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'правый':
+            x0cR, y0cR = contour_center[i]
+            string += 'правый: $x_{0,c,R}=' + f'{float(x0cR):g}' + 'см; \\quad y_{0,c,R}=' + f'{float(y0cR):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'нижний':
+            x0cB, y0cB = contour_center[i]
+            string += 'нижний: $x_{0,c,B}=' + f'{float(x0cB):g}' + 'см; \\quad y_{0,c,B}=' + f'{float(y0cB):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'верхний':
+            x0cT, y0cT = contour_center[i]
+            string += 'верхний: $x_{0,c,T}=' + f'{round(x0cT,2):g}' + 'см; \\quad y_{0,c,T}=' + f'{round(y0cT,2):g}' + 'см$.'
+    
+    st.write(string)
 
-    st.write('''НА ДАННЫЙ МОМЕНТ РАСЧЕТ ПРЕДПОЛАГАЕТ СИММЕТРИЧНОЕ РАСПОЛОЖЕНИЕ СВАЙ ВОКРУГ КОЛОННЫ
-    (Т.Е. $c_L=c_R$ и $c_B=c_T$) И НЕ УЧИТЫВАЕТ НЕРАВНОМЕРНОСТЬ ПРОЧНОСТНЫХ ХАРАКТЕРИСТИК.
-    ПРИ РАСЧЕТЕ ПРЕДЕЛЬНОГО МОМЕНТА ПОВЫШАЮЩИЙ КОЭФФИЦИЕНТ К ПРОЧНОСТИ БЕТОНА ПРИНИМАЕТСЯ МИНИМАЛЬНЫМ ИЗ НАЙДЕННЫХ РАНЕЕ''')
-    st.write(f'Моменты инерции расчетного контура и моменты сопротивления в ПЛОСКОСТИ осей $x$ и $y$ вычисляются по формулам:')
 
-    st.write('''$
-    I_{bx} = 2 \cdot \\left[ \dfrac{(c_L/2+b+c_R/2)^3}{12} + (c_B/2+h+c_T/2) \cdot \\left( \dfrac{c_L/2 + b + c_R/2}{2} \\right)^2 \\right];
-    $''')
+    st.write('Положение геометрического центра тяжести контура относительно левого нижнего угла колонны вычисляем по формуле:')
 
-    st.write('''$
-    I_{by} = 2 \cdot \\left[ \dfrac{(c_B/2+h+c_T/2)^3}{12} + (c_L/2+b+c_R/2) \cdot \\left( \dfrac{c_B/2 + h + c_T/2}{2} \\right)^2 \\right];
-    $''')
+    st.latex('''
+    x_c = \\dfrac{\\sum_i S_{x,i}}{\\sum_i L_{i}} = \\dfrac{\\sum_i L_{i} \\cdot x_{0,c,i}}{\\sum_i L_{i}}; \\quad
+    y_c = \\dfrac{\\sum_i S_{y,i}}{\\sum_i L_{i}} = \\dfrac{\\sum_i L_{i} \\cdot y_{0,c,i}}{\\sum_i L_{i}}.
+    ''')
+    
+    st.write('В результате подстановки значений найдем $x_{c}='+ f'''{round(rez['xc'],2):g}'''+ '$см; $y_{c}='+ f'''{round(rez['yc'],2):g}$см.''')
 
-    st.write('''$
-    W_{bx} = \dfrac{I_{bx}}{0.5 \cdot (c_L/2 + b + c_R/2)};
-    W_{by} = \dfrac{I_{by}}{0.5 \cdot (c_B/2 + h + c_T/2)}.
-    $''')
+    st.write('Таким образом координаты центров тяжести каждого из элементов контура относительно центра тяжести всего контура составляют:')
 
-    Ibx = 2* ( (cL/2+b+cR/2)**3/12 + (cB/2+h+cT/2)*((cL/2 + b + cR/2)/2)**2 )
-    Ibx = round(Ibx)
-    Wbx = Ibx/(0.5*(cL/2+b+cR/2))
-    Wbx = round(Wbx)
+    st.write('Положение центров тяжести каждого из участков контура относительно центра тяжести колонны:')
+    xcL, xcR, xcB, xcT = 0, 0, 0, 0
+    ycL, ycR, ycB, ycT = 0, 0, 0, 0
+    string = ''
+    for i in range(len(contour_sides)):
+        if contour_sides[i] == 'левый':
+            xcL = x0cL - rez['xc']
+            ycL = y0cL - rez['yc']
+            string += 'левый: $x_{c,L}=' + f'{float(round(xcL,2)):g}' + 'см; \quad y_{c,L}=' + f'{float(round(ycL,2)):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'правый':
+            xcR = x0cR - rez['xc']
+            ycR = y0cR - rez['yc']
+            string += 'правый: $x_{c,R}=' + f'{float(round(xcR,2)):g}' + 'см; \quad y_{c,R}=' + f'{float(round(ycR,2)):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'нижний':
+            xcB = x0cB - rez['xc']
+            ycB = y0cB - rez['yc']
+            string += 'нижний: $x_{c,B}=' + f'{float(round(xcB,2)):g}' + 'см; \quad y_{c,B}=' + f'{float(round(ycB,2)):g}' + 'см$'
+            if i == len(contour_sides) - 1:
+                string += '.'
+            else:
+                string += ''';
+                \n'''
+        if contour_sides[i] == 'верхний':
+            xcT = x0cT - rez['xc']
+            ycT = y0cT - rez['yc']
+            string += 'верхний: $x_{c,T}=' + f'{float(round(xcT,2)):g}' + 'см; \quad y_{c,T}=' + f'{float(round(ycT,2)):g}' + 'см.$'
+    
+    
+    st.write(string)
 
-    Iby = 2* ( (cB/2+h+cT/2)**3/12 + (cL/2+b+cR/2)*((cB/2 + h + cT/2)/2)**2 )
-    Iby = round(Iby)
-    Wby = Iby/(0.5*(cB/2+h+cT/2))
-    Wby = round(Wby)
+  
 
-    st.write('В результате расчета найдем следующие значения геометрических характеристик расчетного контура:'+
-             ' $I_{bx}=' + str(Ibx) + '$см$^3$;'+
-             ' $I_{by}=' + str(Iby) + '$см$^3$;'+
-             ' $W_{bx}=' + str(Wbx) + '$см$^2$;'+
-             ' $W_{by}=' + str(Wby) + '$см$^2$.'
-             )
+    I0xL, I0xR, I0xB, I0xT = 0, 0, 0, 0
+    I0yL, I0yR, I0yB, I0yT = 0, 0, 0, 0
+    st.write('Собственные моменты инерции участков контура в направлении осей $x$ и $y$ вычисляются по формулам:')
+    st.latex('''I_{0,x,i} = \\dfrac{L_{x,i}^3}{12}; \\quad
+    I_{0,y,i} = \\dfrac{L_{y,i}^3}{12},
+    ''')
+    st.write('где $L_{x,i}$ и $L_{y,i}$ длины проекций соответствующего участка на оси $x$ и $y$.')
+
+    st.write('Длины проекций и собственные моменты инерции в направлении осей $x$ и $y$ участков контура составляют: ')
+    
+    for i in range(len(contour_sides)):
+        string = ''
+        if contour_sides[i] == 'левый':
+            LL = contour_len[i]
+            I0yL = LL**3/12
+            string += 'левый: '
+            string += r'$L_{x,L}=0; I_{0,x,L}=0; L_{y,L}=' + f'{round(LL,2):g}' + '$см$' '; I_{0,y,L}=\\dfrac{' + f'{round(LL,2):g}' + '^3}{12}='  +f'{round(I0yL):g}' + '$см$^3$; '
+        if contour_sides[i] == 'правый':
+            LR = contour_len[i]
+            I0yR = LR**3/12
+            string += 'правый: '
+            string += r'$L_{x,R}=0; I_{0,x,R}=0; L_{y,R}=' + f'{round(LR,2):g}' + '$см$' '; I_{0,y,R}=\\dfrac{' + f'{round(LR,2):g}' + '^3}{12}=' +f'{round(I0yR):g}' + '$см$^3$; '
+            
+        if contour_sides[i] == 'нижний':
+            LB = contour_len[i]
+            Ix0B = LB**3/12
+            string += 'нижний: '
+            string += r'$L_{x,B}=' + f'{round(LB,2):g}' + '$см$; I_{0,x,B}=\\dfrac{' + f'{round(LB,2):g}' + '^3}{12}=' + f'{round(Ix0B):g}' + '$см$^4; L_{y,B}=0; I_{0,y,B}=0$; '
+            
+        if contour_sides[i] == 'верхний':
+            LT = contour_len[i]
+            Ix0T = LT**3/12
+            string += 'верхний: '
+            string += r'$L_{x,T}=' + f'{round(LT,2):g}' + '$см$; I_{0,x,T}=\\dfrac{' + f'{round(LT,2):g}' + '^3}{12}=' + f'{round(Ix0T):g}' + '$см$^4; L_{y,T}=0; I_{0,y,T}=0$; '
+        
+        if i == len(contour_sides)-1:
+            string = string[:-2]
+            string += '.'
+        st.write(string)
+
+    st.write('Моменты инерции всего контура в направлении осей $x$ и $y$ вычисляются по формулам:')
+    st.latex('''I_{x} = \\sum_i \\left[ I_{0,x,i} + L_i \\cdot \\left( x_{c,i} \\right)^2   \\right]; \\quad
+    I_{y} = \\sum_i \\left[ I_{0,y,i} + L_i \\cdot \\left( y_{c,i} \\right)^2   \\right].
+    ''')
+    
+    st.write('В результате подстановки значений найдем $I_{bx}='+ f'''{round(rez['Ibx'])}'''+ '$см$^3$; $I_{y}='+ f'''{round(rez['Iby'])}$см$^3$.''')
+
+    st.write('Расстояния до наиболее удаленных точек от центра тяжести контура:')
+    st.write('$|x_{\\min}|=' + f'''{round(abs(rez['xmin']),2):g}''' + 'см; x_{\\max}='+ f'''{round(abs(rez['xmax']),2):g}''' + 'см; |y_{\\min}|=' + f'''{round(abs(rez['ymin']),2):g}''' + 'см; y_{\\max}=' + f'''{round(abs(rez['ymax']),2):g}'''+   'см.$' )
+
+    st.write('Минимальные значения моментов сопротивления расчетного контура в направлении осей $x$ и $y$ вычисляются по формуле:')
+
+    st.latex('W_{bx} = \dfrac{I_{bx}}{x_{\\max}}; \\quad W_{by} = \dfrac{I_{by}}{y_{\\max}}.')
+
+    st.write('В результате расчета найдем: $W_{bx}=' + f'''{round(abs(rez['Wxmin'])):g}''' + 'см^2; W_{by}=' + f'''{round(abs(rez['Wymin'])):g}''' + 'см^2.$')
 
     st.write('Предельные моменты, воспринимаемые расчетным контуром в плоскости осей $x$ и $y$ вычисляются по формулам:')
-    st.write('''$M_{bx,ult}=\\gamma \cdot R_{bt} \cdot h_0 \cdot W_{bx}$;
-     $M_{by,ult}=\\gamma \cdot R_{bt} \cdot h_0 \cdot W_{by}$.''')
+    st.latex('''M_{bx,ult}=\\gamma \cdot R_{bt} \cdot h_0 \cdot W_{bx}; \\quad
+     M_{by,ult}=\\gamma \cdot R_{bt} \cdot h_0 \cdot W_{by}.''')
+    gamma_min = min(contour_gamma)
 
-    gamma_min = min(gammaL, gammaR, gammaB, gammaT)
     st.write('''Здесь $\\gamma='''+ str(gamma_min) + '''$ - минимальное значение повышающего коэффициента к прочности бетона, из найденных ранее.''')
 
+    st.write('В результате расчета найдем: $M_{bx,ult}=' + f'''{round(abs(rez["Mbxult"]),1):g}''' + 'тсм; M_{by,ult}=' + f'''{round(abs(rez["Mbyult"]),1):g}''' + 'тсм.$')
     
-    Mbxult = Wbx*gamma_min*h0*Rbt/100
-    Mbxult=round(Mbxult,1)
-    Mbyult = Wby*gamma_min*h0*Rbt/100
-    Mbyult=round(Mbyult,1)
-    st.write('В результате расчета найдем: $M_{bx,ult}=' + str(Mbxult) + '$тсм; $M_{by,ult}=' + str(Mbyult) + '$тсм.')
-
     st.write('Проверка прочности выполняется из условия:')
 
-    st.write('$\dfrac{F}{F_{b,ult}} + \\left(\dfrac{\delta_M \cdot Mx}{M_{bx,ult}} + \dfrac{\delta_M \cdot My}{M_{by,ult}}\\right) = k_F + k_M \le 1$.')
+    st.latex('\\dfrac{F}{F_{b,ult}} + \\left(\\dfrac{\delta_M \\cdot M_x}{M_{bx,ult}} + \\dfrac{\\delta_M \cdot M_y}{M_{by,ult}}\\right) = k_F + k_M \\le 1.')
     st.write('Здесь $k_F$ и $k_M$ - коэффициенты использования сечения по силе и моментам соответственно, причем $k_M \le 0.5\cdot k_F$.')
 
+    if abs(rez["ex"]) != 0.0 or abs(rez["ey"]) != 0.0:
+        st.write('Так как положение центра расчетного контура не совпадает с точкой приложения нагрузки, корректируем величину действующих моментов с учетом эксцентриситета.')
+        st.write('Значения эксцентриситетов продольной силы относительно геометрического центра расчетного контура составляют:')
+        st.write('$e_x = x_c - b/2=' + f'''{round(rez["ex"],2):g}''' + 'см; \\quad e_y = y_c - h/2=' f'''{round(rez["ey"],2):g}''' 'см.$')
+        st.write('Таким образом дополнительные моменты от эксцентриситета геометрического центра составляют:')
+        st.write('$M_{x,e} =  - F \\cdot e_x=' + f'''{round(rez["Mxexc"],1):g}''' + 'тсм; \\quad M_{y,e} = - F \\cdot e_y=' f'''{round(rez["Myexc"],1):g}''' 'тсм.$')
+    
+        st.write('Положение центра прочности контура относительно левого нижнего угла колонны вычисляем по формуле:')
+        st.latex('''
+        x_{c,\\gamma} = \\dfrac{\\sum_i \\gamma_i \\cdot S_{x,i}}{\\sum_i \\gamma_i \\cdot L_{i}} = \\dfrac{\\sum_i \\gamma_i \\cdot L_{i} \\cdot x_{0,i}}{\\sum_i \\gamma_i \\cdot L_{i}}; \\quad
+        y_{c,\\gamma} = \\dfrac{\\sum_i \\gamma_i \\cdot S_{y,i}}{\\sum_i \\gamma_i \\cdot L_{i}} = \\dfrac{\\sum_i \\gamma_i \\cdot L_{i} \\cdot y_{0,i}}{\\sum_i \\gamma_i \\cdot L_{i}}.
+        ''')
+        st.write('В результате подстановки значений найдем $x_{c,\\gamma}='+ f'''{round(rez['xcM'],2):g}'''+ '$см; $y_{c,\\gamma}='+ f'''{round(rez['ycM'],2):g}$см.''')
+        
+        st.write('Значения эксцентриситетов продольной силы относительно центра прочности расчетного контура составляют:')
+        st.write('$e_{x,\\gamma} = x_{c,\\gamma} - b/2=' + f'''{round(rez["exM"],2):g}''' + 'см; \\quad e_{y,\\gamma} = y_{c,\\gamma} - h/2=' f'''{round(rez["eyM"],2):g}''' 'см.$')
+        st.write('Таким образом дополнительные моменты от эксцентриситета центра прочности составляют:')
+        st.write('$M_{x,e,\\gamma} =  - F \\cdot e_{x,\\gamma}=' + f'''{round(rez["MxexcM"],1):g}''' + 'тсм; \\quad M_{y,e,\\gamma} = - F \\cdot e_{y,\\gamma}=' f'''{round(rez["MyexcM"],1):g}''' 'тсм.$')
+        st.write('Величины действующих моментов с учетом эксцентриситета для расчета принимаем следующие:')
+        st.latex('M_x = \\max(|M_x + M_{x,e}|; |M_x + M_{x,e,\\gamma}|); M_y = \\max(|M_y + M_{y,e}|; |M_y + M_{y,e,\\gamma}|)')
+        st.write('В результате найдем $M_x = '+ f'''{round(rez["Mxlocmax"],1):g}''' + 'тсм; M_y='+ f'''{round(rez["Mylocmax"],1):g}'''+ 'тсм.$')
+
+    st.write('Коэффициенты использования составляют:')
+    st.write('$k_F=\\dfrac{F}{F_{b,ult}}=\\dfrac{' + f'''{round(F):g}''' + '}{' f'''{round(rez["Fbult"]):g}''' + '}=' + f'''{round(rez["kF"],3):g}''' + ';$')
+    st.write('$k_M=\\dfrac{\\delta_M \cdot M_x}{M_{bx,ult}} + \\dfrac{\\delta_M \cdot M_y}{M_{by,ult}} =\\dfrac{' 
+             + str(deltaM) + '\\cdot' + f'''{round(rez["Mxlocmax"],1):g}''' +  '}{' f'''{round(rez["Mbxult"],1):g}''' + '}+' +
+              '\\dfrac{' + str(deltaM) + '\\cdot' + f'''{round(rez["Mylocmax"],1):g}'''  + '}{' f'''{round(rez["Mbyult"],1):g}''' + '}=' +
+            f'''{round(rez["kM"],3):g}''' + ';$')
+    st.write('$k=k_F+k_M=' + str(round(rez['kF'],3)) + '+' + str(round(rez['kMmax'],3)) + '=' + str(round(rez['k'],3)) + '$.')
 
 st.write('Коэффициент использования по продольной силе $k_F=' + str(round(rez['kF'],3)) + '$.')
 st.write('Коэффициент использования по моментам $k_М=' + str(round(rez['kMmax'],3)) + '$.')
 st.write('Суммарный коэффициент использования $k=' + str(round(rez['k'],3)) + '$.')
+
+
+#string = ''
+#string += '''принимаем $$a+b+c$$ 
+#\n'''
+#string += '''принимаем $$b+c+d$$
+#\n'''
+#string += '$aaa$'
+#st.write(string)
+
+#from pylatex import *
+
+#def gen_pdf(text):
+#    # initialize a Document
+#    doc = Document('tmppdf')
+
+#    # this is a sample of a document, you could add more sections
+#    with doc.create(Section('Пример')):
+#        doc.append(text)
+#    doc.generate_pdf("tmppdf", clean_tex=True, compiler = "XeLaTeX ")
+    
+#    with open("tmppdf.pdf", "rb") as pdf_file:
+#        PDFbyte = pdf_file.read()
+  
+#    return PDFbyte
+
+## the download button will get the generated file stored in Streamlit server side, and download it at the user's side
+#st.download_button(label="Download PDF Report",
+#                   key='download_pdf_btn',
+#                   data=gen_pdf(string),
+#                   file_name='name_of_your_file.pdf', # this might be changed from browser after pressing on the download button
+#                   mime='application/octet-stream',)
 
 
 
