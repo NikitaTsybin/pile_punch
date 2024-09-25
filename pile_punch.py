@@ -401,8 +401,8 @@ with st.expander('Описание исходных данных'):
 cols = st.columns([1, 0.4])
 cols2 = cols[0].columns([1,1,1,1,1])
 Rbt = cols2[0].number_input(label='$R_{bt}$, МПа', step=0.05, format="%.2f", value=1.4, min_value=0.1, max_value=5.0, label_visibility="visible")
-#Rbt = 0.01019716213*Rbt
-Rbt = 0.01*Rbt
+Rbt = 0.01019716213*Rbt
+#Rbt = 0.01*Rbt
 F = cols2[1].number_input(label='$F$, тс', step=0.5, format="%.1f", value=1400.0, min_value=1.0, max_value=50000.0, label_visibility="visible")
 Mx = cols2[2].number_input(label='$M_x$, тсм', step=0.5, format="%.1f", value=90.0, label_visibility="visible")
 My = cols2[3].number_input(label='$M_y$, тсм', step=0.5, format="%.1f", value=120.0, label_visibility="visible")
